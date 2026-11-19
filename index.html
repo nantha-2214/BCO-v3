@@ -6,7 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Biz Card Organiser">
+<meta name="apple-mobile-web-app-title" content="Biz Cards">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="format-detection" content="telephone=no">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%230f62fe'/><rect x='30' y='45' width='120' height='90' fill='%23fff1a8'/><circle cx='70' cy='85' r='14' fill='%23002d9c'/><path d='M98 75h28M98 95h28M50 115h50' stroke='%23002d9c' stroke-width='9'/></svg>">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -353,6 +355,12 @@ textarea{min-height:72px;resize:vertical}
     <section class="setgroup"><h4>Scanning</h4>
       <div class="setrow tog"><label class="lbl" for="s_autopdf">Save the card PDF automatically when I save a new card</label><input type="checkbox" class="switch" id="s_autopdf"><span class="sub">A card-size PDF of every scanned card is always made on the phone. Turn this on to also download or share it each time you tap Save contact.</span></div>
     </section>
+    <section class="setgroup" id="installGroup"><h4>Install as an app</h4>
+      <div class="storeinfo" id="installMsg"></div>
+      <div class="datarow"><button class="btn btn-sm btn-primary" id="installBtn" type="button" hidden>Install Biz Card Organiser</button>
+        <button class="btn btn-sm btn-outline" id="offlineBtn" type="button">Get ready to scan offline</button></div>
+      <div class="status" id="offlineStatus" hidden></div>
+    </section>
     <section class="setgroup"><h4>Your data</h4>
       <div class="storeinfo" id="s_store">Checking storage...</div>
       <div class="datarow">
@@ -369,7 +377,7 @@ textarea{min-height:72px;resize:vertical}
     </section>
     <section class="setgroup">
       <div class="datarow"><button class="btn btn-sm btn-quiet" id="s_reset" type="button">Reset settings to default</button></div>
-      <span class="ver">Biz Card Organiser 3.7 · Settings and cards are kept in this browser on this device.</span>
+      <span class="ver">Biz Card Organiser 3.8 · Settings and cards are kept in this browser on this device.</span>
     </section>
   </div>
 </div>
@@ -1156,11 +1164,37 @@ var SEED=[];
     return n.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-').slice(0,60)+'-card.pdf'}
   $('pdfView').onclick=function(){if(scanPdf)deliverPdf(scanPdf,cardPdfName())};
 
+  /* ---------- install as an app + offline ---------- */
+  var deferredInstall=null;
+  function isStandalone(){try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}}
+  function isIOS(){var ua=navigator.userAgent||'';return /iphone|ipad|ipod/i.test(ua)||(/macintosh/i.test(ua)&&navigator.maxTouchPoints>1)}
+  function syncInstall(){
+    var m=$('installMsg'),b=$('installBtn');b.hidden=!deferredInstall||isStandalone();
+    if(isStandalone())m.textContent='Installed. Tap "Get ready to scan offline" once while you have internet, and the app works with no internet after that.';
+    else if(deferredInstall)m.textContent='Install it like a normal app: its own icon, opens full screen, and works offline.';
+    else if(isIOS())m.textContent='In Safari, tap the Share button, then "Add to Home Screen". Important: the home-screen app keeps its own list of cards, so first use "Back up cards" below, then "Restore from backup" inside the installed app.';
+    else m.textContent='In your browser menu, choose "Install app" or "Add to Home screen".';
+  }
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredInstall=e;syncInstall()});
+  window.addEventListener('appinstalled',function(){deferredInstall=null;syncInstall()});
+  $('installBtn').onclick=function(){if(!deferredInstall)return;var p=deferredInstall;deferredInstall=null;p.prompt();(p.userChoice||Promise.resolve()).then(syncInstall,syncInstall)};
+  /* download the card finder and card reader now, so scanning works later without internet */
+  $('offlineBtn').onclick=function(){
+    var b=this,st=$('offlineStatus');b.disabled=true;st.hidden=false;st.className='status';st.textContent='Downloading the card finder and card reader (about 70 MB). This can take a few minutes, so use Wi-Fi and keep this screen open...';
+    Promise.all([loadCv(),loadPaddle().catch(function(){return loadTess()})]).then(function(){
+      st.className='status ok';st.textContent='Ready. Scanning now works without internet on this device.'},
+      function(e){st.className='status err';st.textContent='Could not finish the download ('+(e&&e.message||e)+'). Check the internet and try again.'})
+      .finally(function(){b.disabled=false});
+  };
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
+    window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){try{console.warn('offline helper',e)}catch(_){}})});
+  }
+
   /* ---------- settings panel ---------- */
   function sStatus(msg,kind){var x=$('s_status');x.hidden=!msg;x.textContent=msg||'';x.className='status'+(kind?' '+kind:'')}
   function syncSettings(){
     [].forEach.call(document.querySelectorAll('#setPanel .seg'),function(g){var k=g.getAttribute('data-set');[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-v')===String(S[k])))})});
-    $('s_sort').value=S.sort;$('s_notes').checked=!!S.notes;$('s_cc').value=S.cc;$('s_confirm').checked=!!S.confirm;$('s_autopdf').checked=!!S.autoPdf;
+    $('s_sort').value=S.sort;$('s_notes').checked=!!S.notes;$('s_cc').value=S.cc;$('s_confirm').checked=!!S.confirm;syncInstall();$('s_autopdf').checked=!!S.autoPdf;
     var gone=getDel().filter(function(id){return SEED_IDS.indexOf(id)>=0&&!(store||[]).some(function(x){return x.id===id})}).length;
     $('s_restore').disabled=!gone;$('s_restore').textContent=gone?'Bring back '+gone+' deleted sample card'+(gone>1?'s':''):'No deleted sample cards';
     var info=$('s_store'),n=(store||[]).length,base=n+' card'+(n===1?'':'s')+' saved on this device';
