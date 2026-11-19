@@ -151,6 +151,8 @@ textarea{min-height:72px;resize:vertical}
 .pdfrow .btn-sm{min-height:40px;padding:0 16px;font-size:15px}
 .sheet .panel>*{min-width:0}
 .chip-list button,.chips-t button{white-space:normal}
+.cropnote{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 10px;font-size:13.5px;color:var(--ink-muted);text-align:center}
+.linkbtn{background:none;border:0;padding:6px 4px;min-height:36px;color:var(--accent-ink);text-decoration:underline;font-size:13.5px;white-space:normal}
 .drop .hint2{font-size:13px;color:var(--ink-muted)}
 .status{font-size:14px;padding:10px 14px;background:var(--surface-1)}
 .lt{border:1px solid var(--hairline);padding:0 14px;margin:0 0 4px}
@@ -283,6 +285,7 @@ textarea{min-height:72px;resize:vertical}
     <div class="drop" id="dropZone">
       <img id="preview" alt="Card photo preview" hidden>
       <div class="pdfrow" id="pdfRow" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2"/><path d="M9 13h6M9 17h4"/></svg><span id="pdfMsg" role="status"></span><button type="button" class="btn btn-sm btn-outline" id="pdfView" disabled>Open PDF</button></div>
+      <div class="cropnote" id="cropNote" hidden><span id="cropMsg"></span><button type="button" class="linkbtn" id="cropSwap" hidden></button></div>
       <div class="btnrow"><label class="btn btn-primary pick" for="photo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M5 7h1a2 2 0 0 0 2-2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2"/><circle cx="12" cy="13" r="3"/></svg>
         <span style="color:inherit;font-size:17px;letter-spacing:.16px">Take photo of card</span>
@@ -290,7 +293,7 @@ textarea{min-height:72px;resize:vertical}
       <label class="btn btn-outline pick2" for="attach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3l6.5-6.5a3 3 0 0 0-6-6l-6.5 6.5a4.5 4.5 0 0 0 9 9l6.5-6.5"/></svg><span style="color:inherit;font-size:17px;letter-spacing:.16px">Attach file</span></label></div>
       <input id="photo" type="file" accept="image/*" capture="environment">
       <input id="attach" type="file" accept="image/*">
-      <span class="hint2">Take photo opens the camera. Attach file picks a saved photo, screenshot or image file.</span>
+      <span class="hint2">Take photo opens the camera. Attach file picks a saved photo, screenshot or image file. Lay the card on a plain surface; the app cuts away everything around the card.</span>
     </div>
     <div class="status" id="fstatus" hidden></div>
     <details class="lt" id="ltBox"><summary id="ltSum">Most accurate: use your phone's text scanner</summary>
@@ -348,7 +351,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="setrow tog"><label class="lbl" for="s_confirm">Ask before deleting a card</label><input type="checkbox" class="switch" id="s_confirm"></div>
     </section>
     <section class="setgroup"><h4>Scanning</h4>
-      <div class="setrow tog"><label class="lbl" for="s_autopdf">Save the card PDF automatically when I save a new card</label><input type="checkbox" class="switch" id="s_autopdf"><span class="sub">A PDF of every scanned card is always made on the phone. Turn this on to also download or share it each time you tap Save contact.</span></div>
+      <div class="setrow tog"><label class="lbl" for="s_autopdf">Save the card PDF automatically when I save a new card</label><input type="checkbox" class="switch" id="s_autopdf"><span class="sub">A card-size PDF of every scanned card is always made on the phone. Turn this on to also download or share it each time you tap Save contact.</span></div>
     </section>
     <section class="setgroup"><h4>Your data</h4>
       <div class="storeinfo" id="s_store">Checking storage...</div>
@@ -366,7 +369,7 @@ textarea{min-height:72px;resize:vertical}
     </section>
     <section class="setgroup">
       <div class="datarow"><button class="btn btn-sm btn-quiet" id="s_reset" type="button">Reset settings to default</button></div>
-      <span class="ver">Biz Card Organiser 3.6 · Settings and cards are kept in this browser on this device.</span>
+      <span class="ver">Biz Card Organiser 3.7 · Settings and cards are kept in this browser on this device.</span>
     </section>
   </div>
 </div>
@@ -507,7 +510,7 @@ var SEED=[];
   function setStatus(msg,kind){var s=$('fstatus');s.hidden=!msg;s.textContent=msg||'';s.className='status'+(kind?' '+kind:'')}
   function openForm(c){
     resetScanPdf();
-    editingId=c?c.id:null;photoBlob=null;$('photo').value='';$('attach').value='';if(!c&&!sample)loadPaddle().catch(function(){});$('ltText').value='';$('chipBox').hidden=true;$('chipList').textContent='';$('ltBox').open=false;
+    editingId=c?c.id:null;photoBlob=null;$('photo').value='';$('attach').value='';if(!c&&!sample)loadPaddle().catch(function(){});if(!c)loadCv().catch(function(){});$('ltText').value='';$('chipBox').hidden=true;$('chipList').textContent='';$('ltBox').open=false;
     $('formTitle').textContent=c?'Edit '+(c.name||'contact'):'Scan a new card';
     F.forEach(function(k){$('f_'+k).value=c&&c[k]||''});
     $('f_phones').value=c?(c.phones||[]).join('\n'):'';$('f_emails').value=c?(c.emails||[]).join('\n'):'';
@@ -538,10 +541,17 @@ var SEED=[];
   function onPick(){
     var f=this.files&&this.files[0];if(!f)return;
     if(!/^image\//.test(f.type)&&!/\.(jpe?g|png|heic|heif|webp|gif)$/i.test(f.name)){setStatus('That file is not a photo. Attach a JPG, PNG or HEIC image of the card.','err');this.value='';return}
-    shrink(f).then(function(b){
+    var gen=++pickGen;cropOrig=f;cropCut=null;busy(true);setStatus('Finding the card in the photo...');
+    $('cropNote').hidden=true;
+    cropCard(f).then(function(c){return c},function(e){try{console.warn('card finder',e)}catch(_){}return undefined}).then(function(c){
+      if(gen!==pickGen)return;
+      cropCut=c||null;useCut=!!c;showCropNote(c===undefined?'failed':c?'cut':'none');
+      var cardSrc=c||f;
+      return shrink(cardSrc).then(function(b){
+      if(gen!==pickGen)return;busy(false);
       photoBlob=b;var pv=$('preview');pv.src=URL.createObjectURL(b);pv.hidden=false;
       makeScanPdf();
-      if(!sample){ocrRead(f).then(makeScanPdf);return}
+      if(!sample){ocrRead(cardSrc);return}
       setStatus('Reading the card...');busy(true);
       var prompt='You read Malaysian business cards. Read ONLY what is visible on the attached card photo, including any handwriting. Do not guess or add outside knowledge. '+
         'Return JSON with keys: name, title (designation), company, brand (business or trading name if printed separately from the company name, else ""), place (town and state from the address), business (nature of business only if the card states or clearly implies it, else "Not stated on card"), '+
@@ -554,13 +564,15 @@ var SEED=[];
         var code=e&&e.code;setStatus(code==='not_granted'?'Auto-read is turned off for this page. Type the details from the card.':
           code==='rate_limited'?'Too many reads just now. Type the details, or try another photo in a minute.':
           'Could not read this photo ('+(e&&e.message||'unknown error')+'). Type the details from the card.','err');
-      }).finally(function(){busy(false);makeScanPdf()});
+      }).finally(function(){busy(false)});
+    });
     });
   }
 
   $('form').addEventListener('submit',function(e){
     e.preventDefault();
     var pdf=wantPdf||(!!S.autoPdf&&!editingId&&!!photoBlob);wantPdf=false;
+    var cardPdf=pdf&&photoBlob&&scanPdf?scanPdf:null,cardName=cardPdf?cardPdfName():'';
     if(!db){setStatus('Saving is only available to you as the owner of this page.','err');return}
     var data={};F.forEach(function(k){data[k]=$('f_'+k).value.trim()});
     data.phones=$('f_phones').value.split('\n').map(function(s){return s.trim()}).filter(Boolean);
@@ -577,7 +589,7 @@ var SEED=[];
       data.source='iPhone scan';data.createdAt=data.updatedAt;
       return db.collection('contacts').add(data).then(function(ref){return ref.id});
     }).then(function(id){selectedId=id;if(history.state&&history.state.bco==='form'){navDepth=Math.max(0,navDepth-1);try{history.replaceState({bco:'detail'},'')}catch(e){}}closeForm();setStatus('');q.value='';renderList();renderDetail();document.body.classList.add('show-detail');try{window.scrollTo(0,0)}catch(e){}
-      if(pdf){var sc=contacts.find(function(x){return x.id===id});if(sc)exportPdf([sc])}},function(err){
+      if(cardPdf)deliverPdf(cardPdf,cardName);else if(pdf){var sc=contacts.find(function(x){return x.id===id});if(sc)exportPdf([sc])}},function(err){
       setStatus('Could not save: '+(err&&err.message||err)+'. Your entries are still here; try Save again.','err');
     }).finally(function(){busy(false)});
   });
@@ -1012,25 +1024,137 @@ var SEED=[];
     });
   },function(){})}}catch(e){}
 
-  /* ---------- scanned card -> PDF (made on the phone, nothing uploaded) ---------- */
-  var scanPdf=null,scanUrl=null,scanT=null,scanGen=0;
-  function draftFromForm(){var d={};F.forEach(function(k){d[k]=$('f_'+k).value.trim()});
-    d.phones=$('f_phones').value.split('\n').map(function(x){return x.trim()}).filter(Boolean);
-    d.emails=$('f_emails').value.split('\n').map(function(x){return x.trim()}).filter(Boolean);return d}
-  function resetScanPdf(){scanGen++;scanPdf=null;clearTimeout(scanT);if(scanUrl){URL.revokeObjectURL(scanUrl);scanUrl=null}$('pdfRow').hidden=true;$('pdfView').disabled=true}
+  /* ---------- find the card in the photo and cut away the background (OpenCV, runs on the phone) ---------- */
+  var CV_URL='https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js', cvP=null;
+  function loadCv(){
+    if(cvP)return cvP;
+    cvP=new Promise(function(res,rej){
+      /* OpenCV's module is "thenable"; handing it straight to a promise loops forever, so pass it inside a plain box */
+      var done=function(m){try{delete m.then}catch(e){}res({cv:m})};
+      var ready=function(){var c=window.cv;if(!c)return rej(new Error('card finder did not load'));
+        if(c instanceof Promise){c.then(function(m){window.cv=m;done(m)},rej);return}
+        if(c.Mat)return done(c);c.onRuntimeInitialized=function(){done(c)}};
+      if(window.cv)return ready();
+      var s=document.createElement('script');s.src=CV_URL;s.async=true;s.onload=ready;s.onerror=function(){rej(new Error('needs internet the first time'))};
+      document.head.append(s);
+    });
+    cvP.catch(function(){cvP=null});
+    return cvP;
+  }
+  function fileToCanvas(file,max){
+    return new Promise(function(res,rej){var url=URL.createObjectURL(file),img=new Image();
+      img.onload=function(){var s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),cv=document.createElement('canvas');
+        cv.width=Math.max(1,Math.round(img.naturalWidth*s));cv.height=Math.max(1,Math.round(img.naturalHeight*s));
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);res(cv)};
+      img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('could not open the photo'))};img.src=url});
+  }
+  function orderQuad(p){ /* -> top-left, top-right, bottom-right, bottom-left (clockwise on screen) */
+    var cx=(p[0].x+p[1].x+p[2].x+p[3].x)/4,cy=(p[0].y+p[1].y+p[2].y+p[3].y)/4;
+    var s=p.slice().sort(function(a,b){return Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx)});
+    var k=0;for(var i=1;i<4;i++)if(s[i].x+s[i].y<s[k].x+s[k].y)k=i;
+    return [s[k],s[(k+1)%4],s[(k+2)%4],s[(k+3)%4]]}
+  function findCardQuad(cv,canvas){
+    var src=cv.imread(canvas),gray=new cv.Mat(),blur=new cv.Mat(),W=canvas.width,H=canvas.height,A=W*H,best=null,bestA=0,keep=[src,gray,blur];
+    try{
+      cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);
+      var masks=[];
+      /* 1. edges around the card */
+      var ed=new cv.Mat();keep.push(ed);cv.Canny(blur,ed,40,120);var k=cv.getStructuringElement(cv.MORPH_RECT,new cv.Size(5,5));keep.push(k);
+      cv.dilate(ed,ed,k,new cv.Point(-1,-1),2);cv.erode(ed,ed,k,new cv.Point(-1,-1),1);masks.push(ed);
+      /* 1b. the same with a heavy blur, so printed text on the table does not count as an edge */
+      var bb=new cv.Mat(),eb=new cv.Mat();keep.push(bb,eb);cv.GaussianBlur(gray,bb,new cv.Size(15,15),0);cv.Canny(bb,eb,20,60);cv.dilate(eb,eb,k,new cv.Point(-1,-1),2);masks.push(eb);
+      /* 1c. a white card on a coloured or printed surface */
+      var wt=new cv.Mat();keep.push(wt);cv.threshold(blur,wt,232,255,cv.THRESH_BINARY);var k3=cv.getStructuringElement(cv.MORPH_RECT,new cv.Size(21,21));keep.push(k3);
+      cv.morphologyEx(wt,wt,cv.MORPH_CLOSE,k3);cv.morphologyEx(wt,wt,cv.MORPH_OPEN,k3);masks.push(wt);
+      /* 2. card lighter (or darker) than the table */
+      [cv.THRESH_BINARY,cv.THRESH_BINARY_INV].forEach(function(t){var m=new cv.Mat();keep.push(m);cv.threshold(blur,m,0,255,t+cv.THRESH_OTSU);
+        var k2=cv.getStructuringElement(cv.MORPH_RECT,new cv.Size(15,15));keep.push(k2);cv.morphologyEx(m,m,cv.MORPH_CLOSE,k2);cv.morphologyEx(m,m,cv.MORPH_OPEN,k2);masks.push(m)});
+      masks.forEach(function(m,mi){
+        var cs=new cv.MatVector(),hi=new cv.Mat();cv.findContours(m,cs,hi,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
+        for(var i=0;i<cs.size();i++){var c=cs.get(i),a=cv.contourArea(c);
+          if(a<A*.12||a>A*.97||a<=bestA){c.delete();continue}
+          var hull=new cv.Mat();cv.convexHull(c,hull,false,true);
+          var peri=cv.arcLength(hull,true),ap=new cv.Mat(),pts=null;
+          cv.approxPolyDP(hull,ap,.02*peri,true);
+          if(ap.rows===4){pts=[];for(var j=0;j<4;j++)pts.push({x:ap.data32S[j*2],y:ap.data32S[j*2+1]})}
+          else{ /* rounded or torn corners: use the tightest rotated rectangle if it fits the shape well */
+            var rr=cv.minAreaRect(hull),ra=rr.size.width*rr.size.height;
+            if(ra>0&&cv.contourArea(hull)/ra>.9){var v=cv.RotatedRect.points(rr);pts=v.map(function(q){return {x:q.x,y:q.y}})}}
+          if(pts){var q=orderQuad(pts),w=Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y),h=Math.hypot(q[3].x-q[0].x,q[3].y-q[0].y),ar=Math.max(w,h)/Math.max(1,Math.min(w,h)),
+              qa=Math.abs((q[0].x*q[1].y-q[1].x*q[0].y)+(q[1].x*q[2].y-q[2].x*q[1].y)+(q[2].x*q[3].y-q[3].x*q[2].y)+(q[3].x*q[0].y-q[0].x*q[3].y))/2;
+            /* business cards are about 1.4 to 2.1 times as wide as tall, and the outline must really be a rectangle */
+            if(ar>1.35&&ar<2.2&&qa>0&&a/qa>.85){best=q;bestA=a}}
+          hull.delete();ap.delete();c.delete()}
+        cs.delete();hi.delete()});
+    }finally{keep.forEach(function(m){try{m.delete()}catch(e){}})}
+    return best;
+  }
+  /* returns a JPEG of just the card, straightened, or null when no card edge is found */
+  function cropCard(file){
+    return Promise.all([loadCv(),fileToCanvas(file,2000)]).then(function(r){
+      var cv=r[0].cv,full=r[1],sc=Math.min(1,640/Math.max(full.width,full.height)),small=document.createElement('canvas');
+      small.width=Math.round(full.width*sc);small.height=Math.round(full.height*sc);small.getContext('2d').drawImage(full,0,0,small.width,small.height);
+      var q=findCardQuad(cv,small);if(!q)return null;
+      q=q.map(function(p){return {x:p.x/sc,y:p.y/sc}});
+      var w=Math.round(Math.max(Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y),Math.hypot(q[2].x-q[3].x,q[2].y-q[3].y))),
+          h=Math.round(Math.max(Math.hypot(q[3].x-q[0].x,q[3].y-q[0].y),Math.hypot(q[2].x-q[1].x,q[2].y-q[1].y)));
+      if(Math.min(w,h)<80)return null;
+      var src=cv.imread(full),dst=new cv.Mat(),
+          from=cv.matFromArray(4,1,cv.CV_32FC2,[q[0].x,q[0].y,q[1].x,q[1].y,q[2].x,q[2].y,q[3].x,q[3].y]),
+          to=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,w,0,w,h,0,h]),M=cv.getPerspectiveTransform(from,to);
+      try{cv.warpPerspective(src,dst,M,new cv.Size(w,h),cv.INTER_LINEAR,cv.BORDER_REPLICATE);
+        var out=document.createElement('canvas');out.width=w;out.height=h;cv.imshow(out,dst);
+        /* trim a hair off each edge so no table shows along the border */
+        var t=Math.round(Math.min(w,h)*.008),fin=document.createElement('canvas');fin.width=w-2*t;fin.height=h-2*t;
+        fin.getContext('2d').drawImage(out,t,t,fin.width,fin.height,0,0,fin.width,fin.height);
+        return new Promise(function(res){fin.toBlob(function(b){res(b)},'image/jpeg',.92)});
+      }finally{[src,dst,from,to,M].forEach(function(m){try{m.delete()}catch(e){}})}
+    });
+  }
+
+  /* ---------- card-size PDF: the page is the card, nothing else ---------- */
+  function buildCardPdf(blob){
+    var url=URL.createObjectURL(blob);
+    return loadJpeg(url).then(function(im){URL.revokeObjectURL(url);if(!im)throw new Error('could not read the card photo');
+      var MM=72/25.4,land=im.w>=im.h,pw=land?90*MM:90*MM*im.w/im.h,ph=land?90*MM*im.h/im.w:90*MM; /* 90 mm across the long side, like a printed card */
+      var cs='q '+pw.toFixed(2)+' 0 0 '+ph.toFixed(2)+' 0 0 cm /Im0 Do Q',objs=[];function obj(s){objs.push(s);return objs.length}
+      obj('<< /Type /Catalog /Pages 2 0 R >>');obj('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+      obj('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+pw.toFixed(2)+' '+ph.toFixed(2)+'] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
+      obj('<< /Type /XObject /Subtype /Image /Width '+im.w+' /Height '+im.h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+im.data.length+' >>\nstream\n'+im.data+'\nendstream');
+      obj('<< /Length '+cs.length+' >>\nstream\n'+cs+'\nendstream');
+      var out='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n',offs=[];
+      objs.forEach(function(o,i){offs.push(out.length);out+=(i+1)+' 0 obj\n'+o+'\nendobj\n'});
+      var xref=out.length;
+      out+='xref\n0 '+(objs.length+1)+'\n0000000000 65535 f \n'+offs.map(function(o){return ('000000000'+o).slice(-10)+' 00000 n \n'}).join('')+'trailer\n<< /Size '+(objs.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n';
+      var u=new Uint8Array(out.length);for(var i=0;i<out.length;i++)u[i]=out.charCodeAt(i)&255;
+      return new Blob([u],{type:'application/pdf'});
+    });
+  }
+
+  /* ---------- scanned card -> card-size PDF (made on the phone, nothing uploaded) ---------- */
+  var scanPdf=null,scanGen=0,pickGen=0,cropOrig=null,cropCut=null,useCut=false;
+  function resetScanPdf(){scanGen++;pickGen++;scanPdf=null;cropOrig=cropCut=null;$('pdfRow').hidden=true;$('pdfView').disabled=true;$('cropNote').hidden=true}
   function makeScanPdf(){
     if(!photoBlob)return Promise.resolve();
-    var gen=++scanGen,d=draftFromForm();if(!scanUrl)scanUrl=URL.createObjectURL(photoBlob);d.imageUrl=scanUrl;
-    $('pdfRow').hidden=false;if(!scanPdf)$('pdfMsg').textContent='Turning the card into a PDF...';
-    return buildPdf([d]).then(function(bl){if(gen!==scanGen)return;scanPdf=bl;$('pdfView').disabled=false;
-      $('pdfMsg').textContent=(d.name||d.company)?'Card PDF ready, with the details below.':'Card PDF ready.'},
+    var gen=++scanGen;$('pdfRow').hidden=false;$('pdfView').disabled=true;$('pdfMsg').textContent='Turning the card into a PDF...';
+    return buildCardPdf(photoBlob).then(function(bl){if(gen!==scanGen)return;scanPdf=bl;$('pdfView').disabled=false;
+      $('pdfMsg').textContent=useCut?'Card PDF ready, card size only.':'PDF ready (whole photo).'},
       function(){if(gen===scanGen)$('pdfMsg').textContent='Could not make the PDF. The card can still be saved.'});
   }
-  $('photo').addEventListener('change',function(){if(scanUrl){URL.revokeObjectURL(scanUrl);scanUrl=null}scanPdf=null});
-  $('attach').addEventListener('change',function(){if(scanUrl){URL.revokeObjectURL(scanUrl);scanUrl=null}scanPdf=null});
-  /* keep the PDF in step with any corrections typed into the boxes */
-  $('form').addEventListener('input',function(e){if(!photoBlob||e.target.type==='file')return;clearTimeout(scanT);scanT=setTimeout(makeScanPdf,700)});
-  $('pdfView').onclick=function(){if(!scanPdf)return;var d=draftFromForm();deliverPdf(scanPdf,fileName([d]))};
+  function showCropNote(kind){
+    var n=$('cropNote'),m=$('cropMsg'),b=$('cropSwap');n.hidden=false;
+    if(kind==='cut'){m.textContent='Background cut away and the card straightened.';b.hidden=false;b.textContent='Use the whole photo instead'}
+    else{m.textContent=kind==='failed'?'The card finder needs internet the first time, so the whole photo is kept.':'Could not find the card edges, so the whole photo is kept. Tip: put the card on a darker, plain surface and take it again.';b.hidden=true}
+  }
+  $('cropSwap').onclick=function(){
+    if(!cropOrig||!cropCut)return;useCut=!useCut;var gen=pickGen;
+    shrink(useCut?cropCut:cropOrig).then(function(b){if(gen!==pickGen)return;photoBlob=b;$('preview').src=URL.createObjectURL(b);makeScanPdf()});
+    $('cropMsg').textContent=useCut?'Background cut away and the card straightened.':'Using the whole photo.';
+    this.textContent=useCut?'Use the whole photo instead':'Cut away the background again';
+  };
+  function cardPdfName(){var n=($('f_name').value.trim()&&$('f_name').value.trim().charAt(0)!=='('?$('f_name').value:$('f_company').value).trim()||'business-card';
+    return n.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-').slice(0,60)+'-card.pdf'}
+  $('pdfView').onclick=function(){if(scanPdf)deliverPdf(scanPdf,cardPdfName())};
 
   /* ---------- settings panel ---------- */
   function sStatus(msg,kind){var x=$('s_status');x.hidden=!msg;x.textContent=msg||'';x.className='status'+(kind?' '+kind:'')}
